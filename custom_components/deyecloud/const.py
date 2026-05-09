@@ -1,0 +1,24 @@
+DOMAIN = "deyecloud"
+
+CONF_APP_ID     = "app_id"
+CONF_APP_SECRET = "app_secret"
+CONF_EMAIL      = "email"
+CONF_PASSWORD   = "password"
+CONF_DEVICE_SN  = "device_sn"
+CONF_RATED_POWER = "rated_power"
+
+DEFAULT_RATED_POWER = 15000
+DEFAULT_SCAN_INTERVAL = 300  # 5 minutes
+
+BASE_URL = "https://eu1-developer.deyecloud.com/v1.0"
+TOKEN_TTL = 3000  # seconds
+
+DAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"]
+
+WORK_MODE_SELLING_FIRST   = "SELLING_FIRST"
+WORK_MODE_ZERO_EXPORT     = "ZERO_EXPORT_TO_CT"
+WORK_MODES = [WORK_MODE_ZERO_EXPORT, WORK_MODE_SELLING_FIRST]
+WORK_MODE_LABELS = {
+    WORK_MODE_ZERO_EXPORT:   "Zero Export to CT",
+    WORK_MODE_SELLING_FIRST: "Selling First",
+}

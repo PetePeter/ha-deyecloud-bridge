@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Deye Cloud Inverter",
+        "description": "Enter your Deye Cloud API credentials and inverter serial number.",
+        "data": {
+          "app_id": "App ID",
+          "app_secret": "App Secret",
+          "email": "Email",
+          "password": "Password",
+          "device_sn": "Device Serial Number",
+          "rated_power": "Rated Power (W)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect. Check credentials and serial number.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This inverter is already configured."
+    }
+  }
+}

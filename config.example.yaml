@@ -1,0 +1,26 @@
+# Deye Cloud Bridge — configuration
+# Copy this file to config.yaml and fill in your values.
+# config.yaml is gitignored and never committed.
+
+# Deye developer portal: https://developer.deyecloud.com/app
+app_id: "YOUR_APP_ID"
+app_secret: "YOUR_APP_SECRET"
+
+# Your Deye Cloud account (same login as the Deye app)
+email: "you@example.com"
+password: "your_password"
+
+# Inverter serial number (visible in Deye app → device details)
+device_sn: "YOUR_INVERTER_SN"
+
+# Inverter rated power in watts (check nameplate or Deye app)
+rated_power: 15000
+
+# API base URL — eu1 for Europe/Australia, us1 for North America
+base_url: "https://eu1-developer.deyecloud.com/v1.0"
+
+# Token cache file path (must be writable by HA)
+token_file: "/homeassistant/.deye_token.json"
+
+# Token TTL in seconds (refresh before expiry)
+token_ttl: 3000
