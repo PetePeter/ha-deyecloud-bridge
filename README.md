@@ -69,16 +69,31 @@ Drop two files into your HA config and you're done.
 
 ---
 
-## Credentials
+## Getting API credentials
 
-You need a **Deye Cloud Developer** account:
+You need a **Deye Cloud Developer** account. This is separate from the regular Deye app account, but uses the same email.
 
-1. Register at [developer.deyecloud.com](https://developer.deyecloud.com)
-2. Create an application — note the **App ID** and **App Secret**
-3. Your login **email** and **password** are the same as your Deye Cloud account
-4. Find your **Device Serial Number** in the Deye app → Device → Details
+### Step-by-step
 
-API endpoint: `https://eu1-developer.deyecloud.com/v1.0` (EU region)
+1. **Create a Deye Cloud account** (if you don't have one) — download the Deye app or sign up at [deye.com](https://www.deye.com). Your inverter must already be claimed to a station in the app.
+
+2. **Register as a developer** at [developer.deyecloud.com/app](https://developer.deyecloud.com/app):
+   - Sign in with your existing Deye Cloud email + password
+   - Click **Create Application**
+   - Fill in a name (e.g. "Home Assistant") and description
+   - Note the generated **App ID** and **App Secret**
+
+3. **Find your Device Serial Number** — in the Deye app: Me → Device Management → select your inverter → the numeric serial shown in details (not the logger SN on the label).
+
+4. **Choose the right API region:**
+
+   | Region | Base URL |
+   |--------|----------|
+   | Europe / Australia | `https://eu1-developer.deyecloud.com/v1.0` |
+   | Americas | `https://us1-developer.deyecloud.com/v1.0` |
+   | Asia Pacific | `https://apc1-developer.deyecloud.com/v1.0` |
+
+   Use the region matching where your Deye Cloud account was created (check which server the Deye app connects to if unsure).
 
 ---
 

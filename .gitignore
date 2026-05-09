@@ -1,4 +1,12 @@
 config.yaml
+config.*.yaml
 .deye_token.json
+.deye_token*.json
+secrets.yaml
+.env
+.env.*
+*.key
+*.pem
 __pycache__/
+**/__pycache__/
 *.pyc

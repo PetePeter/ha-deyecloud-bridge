@@ -19,22 +19,56 @@ from pathlib import Path
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
+_CONFIG_TEMPLATE = """\
+# Deye Cloud Bridge — configuration
+# Sign up at https://developer.deyecloud.com/app to get an App ID and Secret.
+# Copy config.example.yaml to config.yaml and fill in your values.
+
+# Deye developer portal: https://developer.deyecloud.com/app
+app_id: "YOUR_APP_ID"
+app_secret: "YOUR_APP_SECRET"
+
+# Your Deye Cloud account (same login as the Deye app)
+email: "you@example.com"
+password: "your_password"
+
+# Inverter serial number (Deye app → device → details)
+device_sn: "YOUR_INVERTER_SN"
+
+# Inverter rated power in watts
+rated_power: 15000
+
+# API base URL — eu1 for Europe/Australia, us1 for Americas
+base_url: "https://eu1-developer.deyecloud.com/v1.0"
+token_file: "/config/.deye_token.json"
+token_ttl: 3000
+"""
+
+
 def load_config():
     cfg = {}
-    # Try config.yaml next to this script
     config_path = Path(__file__).parent / "config.yaml"
-    if config_path.exists():
-        try:
-            import re
-            with open(config_path) as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        m = re.match(r'^(\w+):\s*"?([^"#\n]+)"?\s*$', line)
-                        if m:
-                            cfg[m.group(1)] = m.group(2).strip()
-        except Exception:
-            pass
+
+    if not config_path.exists():
+        config_path.write_text(_CONFIG_TEMPLATE)
+        print(
+            f"Created {config_path} — fill in your credentials and re-run.\n"
+            "Get an App ID + Secret at https://developer.deyecloud.com/app",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        import re
+        with open(config_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    m = re.match(r'^(\w+):\s*"?([^"#\n]+)"?\s*$', line)
+                    if m:
+                        cfg[m.group(1)] = m.group(2).strip()
+    except Exception:
+        pass
 
     # Environment variables override config file
     env_map = {
