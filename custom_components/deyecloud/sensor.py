@@ -10,24 +10,24 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN, CONF_DEVICE_SN
 from .coordinator import DeyeCoordinator
 
+# (key, name, unit, device_class, state_class, icon, display_precision)
 SENSORS = [
-    # (key, name, unit, device_class, state_class, icon)
-    ("solar_power",             "Solar Power",            "W",   SensorDeviceClass.POWER,   SensorStateClass.MEASUREMENT,   "mdi:solar-power"),
-    ("house_load",              "House Load",             "W",   SensorDeviceClass.POWER,   SensorStateClass.MEASUREMENT,   "mdi:home-lightning-bolt"),
-    ("grid_power",              "Grid Power",             "W",   SensorDeviceClass.POWER,   SensorStateClass.MEASUREMENT,   "mdi:transmission-tower"),
-    ("battery_power",           "Battery Power",          "W",   SensorDeviceClass.POWER,   SensorStateClass.MEASUREMENT,   "mdi:battery-charging"),
-    ("ups_power",               "UPS Power",              "W",   SensorDeviceClass.POWER,   SensorStateClass.MEASUREMENT,   "mdi:power-plug"),
-    ("battery_soc",             "Battery SOC",            "%",   SensorDeviceClass.BATTERY, SensorStateClass.MEASUREMENT,   None),
-    ("battery_voltage",         "Battery Voltage",        "V",   SensorDeviceClass.VOLTAGE, SensorStateClass.MEASUREMENT,   None),
-    ("battery_temp",            "Battery Temperature",    "°C",  SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, None),
-    ("inverter_temp",           "Inverter Temperature",   "°C",  SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, None),
-    ("daily_solar",             "Solar Today",            "kWh", SensorDeviceClass.ENERGY,  SensorStateClass.TOTAL_INCREASING, "mdi:solar-power"),
-    ("daily_consumption",       "Consumption Today",      "kWh", SensorDeviceClass.ENERGY,  SensorStateClass.TOTAL_INCREASING, "mdi:home-lightning-bolt"),
-    ("total_solar",             "Solar Total",            "kWh", SensorDeviceClass.ENERGY,  SensorStateClass.TOTAL_INCREASING, None),
-    ("total_grid_import",       "Grid Import Total",      "kWh", SensorDeviceClass.ENERGY,  SensorStateClass.TOTAL_INCREASING, "mdi:transmission-tower-import"),
-    ("total_grid_export",       "Grid Export Total",      "kWh", SensorDeviceClass.ENERGY,  SensorStateClass.TOTAL_INCREASING, "mdi:transmission-tower-export"),
-    ("total_battery_charge",    "Battery Charge Total",   "kWh", SensorDeviceClass.ENERGY,  SensorStateClass.TOTAL_INCREASING, None),
-    ("total_battery_discharge", "Battery Discharge Total","kWh", SensorDeviceClass.ENERGY,  SensorStateClass.TOTAL_INCREASING, None),
+    ("solar_power",             "Solar Power",            "W",   SensorDeviceClass.POWER,       SensorStateClass.MEASUREMENT,    "mdi:solar-power",               0),
+    ("house_load",              "House Load",             "W",   SensorDeviceClass.POWER,       SensorStateClass.MEASUREMENT,    "mdi:home-lightning-bolt",       0),
+    ("grid_power",              "Grid Power",             "W",   SensorDeviceClass.POWER,       SensorStateClass.MEASUREMENT,    "mdi:transmission-tower",        0),
+    ("battery_power",           "Battery Power",          "W",   SensorDeviceClass.POWER,       SensorStateClass.MEASUREMENT,    "mdi:battery-charging",          0),
+    ("ups_power",               "UPS Power",              "W",   SensorDeviceClass.POWER,       SensorStateClass.MEASUREMENT,    "mdi:power-plug",                0),
+    ("battery_soc",             "Battery SOC",            "%",   SensorDeviceClass.BATTERY,     SensorStateClass.MEASUREMENT,    None,                            1),
+    ("battery_voltage",         "Battery Voltage",        "V",   SensorDeviceClass.VOLTAGE,     SensorStateClass.MEASUREMENT,    None,                            2),
+    ("battery_temp",            "Battery Temperature",    "°C",  SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT,    None,                            1),
+    ("inverter_temp",           "Inverter Temperature",   "°C",  SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT,    None,                            1),
+    ("daily_solar",             "Solar Today",            "kWh", SensorDeviceClass.ENERGY,      SensorStateClass.TOTAL_INCREASING, "mdi:solar-power",             2),
+    ("daily_consumption",       "Consumption Today",      "kWh", SensorDeviceClass.ENERGY,      SensorStateClass.TOTAL_INCREASING, "mdi:home-lightning-bolt",     2),
+    ("total_solar",             "Solar Total",            "kWh", SensorDeviceClass.ENERGY,      SensorStateClass.TOTAL_INCREASING, None,                          2),
+    ("total_grid_import",       "Grid Import Total",      "kWh", SensorDeviceClass.ENERGY,      SensorStateClass.TOTAL_INCREASING, "mdi:transmission-tower-import", 2),
+    ("total_grid_export",       "Grid Export Total",      "kWh", SensorDeviceClass.ENERGY,      SensorStateClass.TOTAL_INCREASING, "mdi:transmission-tower-export", 2),
+    ("total_battery_charge",    "Battery Charge Total",   "kWh", SensorDeviceClass.ENERGY,      SensorStateClass.TOTAL_INCREASING, None,                          2),
+    ("total_battery_discharge", "Battery Discharge Total","kWh", SensorDeviceClass.ENERGY,      SensorStateClass.TOTAL_INCREASING, None,                          2),
 ]
 
 
@@ -36,22 +36,22 @@ async def async_setup_entry(
 ) -> None:
     coordinator: DeyeCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        DeyeSensor(coordinator, entry, key, name, unit, dc, sc, icon)
-        for key, name, unit, dc, sc, icon in SENSORS
+        DeyeSensor(coordinator, entry, *row) for row in SENSORS
     )
 
 
 class DeyeSensor(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, entry, key, name, unit, device_class, state_class, icon):
+    def __init__(self, coordinator, entry, key, name, unit, device_class, state_class, icon, precision):
         super().__init__(coordinator)
         self._key = key
-        self._attr_name = name
-        self._attr_unique_id = f"{entry.data[CONF_DEVICE_SN]}_{key}"
+        self._attr_name                       = name
+        self._attr_unique_id                  = f"{entry.data[CONF_DEVICE_SN]}_{key}"
         self._attr_native_unit_of_measurement = unit
-        self._attr_device_class = device_class
-        self._attr_state_class = state_class
+        self._attr_device_class               = device_class
+        self._attr_state_class                = state_class
+        self._attr_suggested_display_precision = precision
         if icon:
             self._attr_icon = icon
         self._attr_device_info = DeviceInfo(

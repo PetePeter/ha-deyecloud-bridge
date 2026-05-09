@@ -5,7 +5,8 @@ from .api import DeyeCloudClient
 from .const import (
     DOMAIN,
     CONF_APP_ID, CONF_APP_SECRET, CONF_EMAIL, CONF_PASSWORD,
-    CONF_DEVICE_SN, CONF_RATED_POWER, DEFAULT_RATED_POWER,
+    CONF_SERVER, CONF_DEVICE_SN, CONF_RATED_POWER, CONF_REFRESH_INTERVAL,
+    DEFAULT_RATED_POWER, DEFAULT_REFRESH_INTERVAL, DEFAULT_SERVER,
 )
 from .coordinator import DeyeCoordinator
 
@@ -20,8 +21,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         password=entry.data[CONF_PASSWORD],
         device_sn=entry.data[CONF_DEVICE_SN],
         rated_power=entry.data.get(CONF_RATED_POWER, DEFAULT_RATED_POWER),
+        server=entry.data.get(CONF_SERVER, DEFAULT_SERVER),
     )
-    coordinator = DeyeCoordinator(hass, client)
+    coordinator = DeyeCoordinator(
+        hass, client,
+        refresh_interval=int(entry.data.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL)),
+    )
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator

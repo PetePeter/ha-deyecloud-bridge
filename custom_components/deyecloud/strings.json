@@ -2,20 +2,37 @@
   "config": {
     "step": {
       "user": {
-        "title": "Deye Cloud Inverter",
-        "description": "Enter your Deye Cloud API credentials and inverter serial number.",
+        "title": "Deye Cloud — Credentials",
+        "description": "Enter your Deye Cloud developer credentials. Get an App ID and Secret at developer.deyecloud.com.",
         "data": {
+          "server": "Region",
           "app_id": "App ID",
           "app_secret": "App Secret",
-          "email": "Email",
-          "password": "Password",
-          "device_sn": "Device Serial Number",
-          "rated_power": "Rated Power (W)"
+          "email": "Account Email",
+          "password": "Account Password",
+          "rated_power": "Inverter Rated Power (W)",
+          "refresh_interval": "Refresh Interval (seconds)"
+        }
+      },
+      "station": {
+        "title": "Select Station",
+        "description": "Choose the station (site) containing your inverter.",
+        "data": {
+          "station_id": "Station"
+        }
+      },
+      "device": {
+        "title": "Select Inverter",
+        "description": "Multiple inverters found on this station. Choose one.",
+        "data": {
+          "device_sn": "Inverter"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect. Check credentials and serial number.",
+      "cannot_connect": "Cannot connect — check credentials and region.",
+      "no_stations": "No stations found on this account.",
+      "no_devices": "No inverters found on the selected station.",
       "unknown": "Unexpected error."
     },
     "abort": {

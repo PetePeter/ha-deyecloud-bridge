@@ -4,7 +4,7 @@ import json
 import time
 from urllib import request, error
 
-from .const import BASE_URL, TOKEN_TTL, DAYS
+from .const import SERVERS, DEFAULT_SERVER, TOKEN_TTL, DAYS
 
 
 class DeyeApiError(Exception):
@@ -12,23 +12,26 @@ class DeyeApiError(Exception):
 
 
 class DeyeCloudClient:
-    def __init__(self, app_id, app_secret, email, password, device_sn, rated_power=15000):
-        self._app_id = app_id
+    def __init__(self, app_id, app_secret, email, password, device_sn="",
+                 rated_power=15000, server=DEFAULT_SERVER):
+        self._app_id     = app_id
         self._app_secret = app_secret
-        self._email = email
-        self._password = password
-        self.device_sn = device_sn
+        self._email      = email
+        self._password   = password
+        self.device_sn   = device_sn
         self.rated_power = rated_power
-        self._token = None
-        self._token_expires = 0
+        self._base_url   = SERVERS.get(server, SERVERS[DEFAULT_SERVER])
+        self._token          = None
+        self._token_expires  = 0
+
+    # ── HTTP ──────────────────────────────────────────────────────────────────
 
     def _post(self, path, payload, auth=True):
         headers = {"Content-Type": "application/json"}
         if auth:
             headers["Authorization"] = f"bearer {self._get_token()}"
-        url = f"{BASE_URL}{path}"
         req = request.Request(
-            url,
+            f"{self._base_url}{path}",
             data=json.dumps(payload).encode(),
             headers=headers,
             method="POST",
@@ -39,19 +42,16 @@ class DeyeCloudClient:
         except error.URLError as e:
             raise DeyeApiError(f"Network error: {e}") from e
 
+    # ── Auth ──────────────────────────────────────────────────────────────────
+
     def _get_token(self):
         if self._token and time.time() < self._token_expires - 60:
             return self._token
-
         pwd_hash = hashlib.sha256(self._password.encode()).hexdigest()
         resp = self._post(
             f"/account/token?appId={self._app_id}",
-            {
-                "appSecret": self._app_secret,
-                "email": self._email,
-                "password": pwd_hash,
-                "companyId": "0",
-            },
+            {"appSecret": self._app_secret, "email": self._email,
+             "password": pwd_hash, "companyId": "0"},
             auth=False,
         )
         if not resp.get("success"):
@@ -59,6 +59,38 @@ class DeyeCloudClient:
         self._token = resp["accessToken"]
         self._token_expires = time.time() + TOKEN_TTL
         return self._token
+
+    # ── Discovery ─────────────────────────────────────────────────────────────
+
+    def list_stations(self) -> list[dict]:
+        """Return [{id, name}, ...] for all stations on this account."""
+        resp = self._post("/station/list", {"page": 1, "size": 100})
+        if not resp.get("success"):
+            raise DeyeApiError(f"Station list failed: {resp.get('msg')}")
+        stations = resp.get("stationList") or resp.get("infos") or []
+        return [
+            {"id": str(s.get("id") or s.get("stationId", "")),
+             "name": s.get("name") or s.get("stationName") or str(s.get("id", ""))}
+            for s in stations
+        ]
+
+    def list_devices(self, station_id: str) -> list[dict]:
+        """Return [{sn, name}, ...] for all inverters on the given station."""
+        resp = self._post("/station/device", {"page": 1, "size": 100,
+                                               "stationIds": [station_id]})
+        if not resp.get("success"):
+            raise DeyeApiError(f"Device list failed: {resp.get('msg')}")
+        devices = (resp.get("deviceListItems")
+                   or resp.get("infos")
+                   or resp.get("deviceList")
+                   or [])
+        return [
+            {"sn":   d.get("deviceSn") or d.get("sn", ""),
+             "name": d.get("deviceName") or d.get("name") or d.get("deviceSn", "")}
+            for d in devices
+        ]
+
+    # ── Read ──────────────────────────────────────────────────────────────────
 
     def read(self) -> dict:
         resp = self._post("/device/latest", {"deviceList": [self.device_sn]})
@@ -96,6 +128,8 @@ class DeyeCloudClient:
             "total_battery_discharge": f("TotalDischargeEnergy"),
         }
 
+    # ── Control ───────────────────────────────────────────────────────────────
+
     def set_work_mode(self, mode: str) -> None:
         payload = {
             "deviceSn": self.device_sn,
@@ -104,13 +138,8 @@ class DeyeCloudClient:
             "touDays": DAYS,
             "workMode": mode,
             "timeUseSettingItems": [
-                {
-                    "enableGeneration": True,
-                    "enableGridCharge": False,
-                    "power": self.rated_power,
-                    "soc": 10,
-                    "time": t,
-                }
+                {"enableGeneration": True, "enableGridCharge": False,
+                 "power": self.rated_power, "soc": 10, "time": t}
                 for t in ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"]
             ],
         }
