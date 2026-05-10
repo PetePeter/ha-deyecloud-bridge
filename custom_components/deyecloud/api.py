@@ -4,7 +4,7 @@ import json
 import time
 from urllib import request, error
 
-from .const import SERVERS, DEFAULT_SERVER, TOKEN_TTL, DAYS
+from .const import SERVERS, DEFAULT_SERVER, TOKEN_TTL
 
 
 class DeyeApiError(Exception):
@@ -19,7 +19,6 @@ class DeyeCloudClient:
         self._email      = email
         self._password   = password
         self.device_sn   = device_sn
-        self.rated_power = rated_power
         self._base_url   = SERVERS.get(server, SERVERS[DEFAULT_SERVER])
         self._token          = None
         self._token_expires  = 0
@@ -131,17 +130,10 @@ class DeyeCloudClient:
     # ── Control ───────────────────────────────────────────────────────────────
 
     def set_work_mode(self, mode: str) -> None:
+        # Only update the selected mode so existing sell/TOU settings remain untouched.
         payload = {
             "deviceSn": self.device_sn,
-            "solarSellAction": "on" if mode == "SELLING_FIRST" else "off",
-            "touAction": "on",
-            "touDays": DAYS,
             "workMode": mode,
-            "timeUseSettingItems": [
-                {"enableGeneration": True, "enableGridCharge": False,
-                 "power": self.rated_power, "soc": 10, "time": t}
-                for t in ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"]
-            ],
         }
         resp = self._post("/strategy/dynamicControl", payload)
         if not resp.get("success"):

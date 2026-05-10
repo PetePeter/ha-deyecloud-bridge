@@ -10,12 +10,14 @@
 shell_command:
   deye_set_selling_first: "python3 /config/deye_bridge.py set SELLING_FIRST"
   deye_set_zero_export:   "python3 /config/deye_bridge.py set ZERO_EXPORT_TO_CT"
+  deye_set_zero_export_load: "python3 /config/deye_bridge.py set ZERO_EXPORT_TO_LOAD"
 
 input_select:
   deye_work_mode:
     name: "Inverter Work Mode"
     options:
       - "Zero Export to CT"
+      - "Zero Export to Load"
       - "Selling First"
     icon: mdi:solar-power-variant
 
@@ -217,3 +219,9 @@ automation:
                 state: "Zero Export to CT"
             sequence:
               - action: shell_command.deye_set_zero_export
+          - conditions:
+              - condition: state
+                entity_id: input_select.deye_work_mode
+                state: "Zero Export to Load"
+            sequence:
+              - action: shell_command.deye_set_zero_export_load

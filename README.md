@@ -42,7 +42,7 @@ Full UI config flow, one device with 16 sensors + a Work Mode selector. Automati
 | `sensor.deye_inverter_grid_export_total` | Lifetime grid export (kWh) |
 | `sensor.deye_inverter_battery_charge_total` | Lifetime battery charge (kWh) |
 | `sensor.deye_inverter_battery_discharge_total` | Lifetime battery discharge (kWh) |
-| `select.deye_inverter_work_mode` | Work mode: *Zero Export to CT* / *Selling First* |
+| `select.deye_inverter_work_mode` | Work mode: *Zero Export to CT* / *Zero Export to Load* / *Selling First* |
 
 ---
 
@@ -99,7 +99,8 @@ You need a **Deye Cloud Developer** account. This is separate from the regular D
 
 ## Work mode API notes
 
-The `/strategy/dynamicControl` endpoint requires exactly **6 time-interval slots**. The bridge
-always sends intervals at 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 (all with the same settings).
+Work mode changes are sent as a narrow `/strategy/dynamicControl` update containing only
+`deviceSn` and `workMode`, so the integration does not overwrite existing solar-sell or
+time-of-use settings that were configured elsewhere.
 
-Valid work modes: `ZERO_EXPORT_TO_CT`, `SELLING_FIRST`
+Valid work modes: `ZERO_EXPORT_TO_CT`, `ZERO_EXPORT_TO_LOAD`, `SELLING_FIRST`

@@ -11,6 +11,7 @@ Usage:
   python3 deye_bridge.py read              -> JSON of all inverter metrics
   python3 deye_bridge.py set SELLING_FIRST
   python3 deye_bridge.py set ZERO_EXPORT_TO_CT
+  python3 deye_bridge.py set ZERO_EXPORT_TO_LOAD
 """
 
 import json, sys, time, hashlib, os
@@ -49,26 +50,18 @@ def load_config():
     cfg = {}
     config_path = Path(__file__).parent / "config.yaml"
 
-    if not config_path.exists():
-        config_path.write_text(_CONFIG_TEMPLATE)
-        print(
-            f"Created {config_path} — fill in your credentials and re-run.\n"
-            "Get an App ID + Secret at https://developer.deyecloud.com/app",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    try:
-        import re
-        with open(config_path) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    m = re.match(r'^(\w+):\s*"?([^"#\n]+)"?\s*$', line)
-                    if m:
-                        cfg[m.group(1)] = m.group(2).strip()
-    except Exception:
-        pass
+    if config_path.exists():
+        try:
+            import re
+            with open(config_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        m = re.match(r'^(\w+):\s*"?([^"#\n]+)"?\s*$', line)
+                        if m:
+                            cfg[m.group(1)] = m.group(2).strip()
+        except Exception:
+            pass
 
     # Environment variables override config file
     env_map = {
@@ -85,7 +78,16 @@ def load_config():
         if val:
             cfg[key] = val
 
-    return cfg
+    if config_path.exists() or all(cfg.get(key) for key in ("app_id", "app_secret", "email", "password", "device_sn")):
+        return cfg
+
+    config_path.write_text(_CONFIG_TEMPLATE, encoding="utf-8")
+    print(
+        f"Created {config_path} - fill in your credentials and re-run.\n"
+        "Get an App ID + Secret at https://developer.deyecloud.com/app",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 CFG = load_config()
@@ -186,7 +188,7 @@ def read_inverter():
 
 # ── Set work mode ─────────────────────────────────────────────────────────────
 
-VALID_MODES = ("SELLING_FIRST", "ZERO_EXPORT_TO_CT")
+VALID_MODES = ("SELLING_FIRST", "ZERO_EXPORT_TO_CT", "ZERO_EXPORT_TO_LOAD")
 
 def set_mode(mode):
     if mode not in VALID_MODES:
@@ -197,16 +199,7 @@ def set_mode(mode):
     token = get_token()
     payload = {
         "deviceSn": DEVICE_SN,
-        "solarSellAction": "on" if mode == "SELLING_FIRST" else "off",
-        "touAction": "on",
-        "touDays": DAYS,
         "workMode": mode,
-        # API requires exactly 6 time intervals
-        "timeUseSettingItems": [
-            {"enableGeneration": True, "enableGridCharge": False,
-             "power": RATED_POWER, "soc": 10, "time": t}
-            for t in ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"]
-        ],
     }
     return _post(f"{BASE}/strategy/dynamicControl", payload, token)
 
@@ -224,7 +217,7 @@ if __name__ == "__main__":
             print(json.dumps({"success": ok, "msg": result.get("msg", "")}))
             sys.exit(0 if ok else 1)
         else:
-            print("Usage: deye_bridge.py read | set SELLING_FIRST | set ZERO_EXPORT_TO_CT",
+            print("Usage: deye_bridge.py read | set SELLING_FIRST | set ZERO_EXPORT_TO_CT | set ZERO_EXPORT_TO_LOAD",
                   file=sys.stderr)
             sys.exit(1)
     except Exception as e:
