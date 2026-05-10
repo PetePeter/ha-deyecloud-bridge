@@ -104,3 +104,25 @@ Work mode changes are sent as a narrow `/strategy/dynamicControl` update contain
 time-of-use settings that were configured elsewhere.
 
 Valid work modes: `ZERO_EXPORT_TO_CT`, `ZERO_EXPORT_TO_LOAD`, `SELLING_FIRST`
+
+## API surfaces discovered
+
+These are the Deye Cloud API surfaces we have actually verified or extracted from Deye's own docs bundle:
+
+| Purpose | Endpoint | Status |
+|--------|----------|--------|
+| Inverter telemetry | `POST /device/latest` | Verified live. Returns a flat key-value list of inverter-reported measurements. |
+| Station summary | `POST /station/latest` | Verified live. |
+| Station devices | `POST /station/device` | Verified live. |
+| Device history | `POST /device/history` | Documented and used as normal telemetry/history path. |
+| Work mode write | `POST /strategy/dynamicControl` | Verified live. Accepts narrow payloads containing only `deviceSn` and `workMode`. |
+| TOU write | `POST /order/sys/tou/update` | Extracted from Deye's Quick Start bundle. |
+| Command status | `GET /order/{orderId}` | Extracted from Deye's Quick Start bundle. |
+
+### Important notes
+
+- `/device/latest` is telemetry only. It does **not** return current TOU, solar-sell, or work-mode strategy state.
+- Older examples often bundled `solarSellAction`, `touAction`, `touDays`, and six `timeUseSettingItems` into `/strategy/dynamicControl`.
+- In live testing, partial `/strategy/dynamicControl` writes containing only `deviceSn` and `workMode` succeeded. This is why the integration now uses narrow writes for mode changes.
+- No public read endpoint has been confirmed for current TOU configuration, solar-sell state, or current work-mode strategy.
+- Likely read-style candidates under `/strategy/...` and `/order/sys/tou/...` were probed and returned `404`.
