@@ -130,11 +130,11 @@ class DeyeCloudClient:
     # ── Control ───────────────────────────────────────────────────────────────
 
     def set_work_mode(self, mode: str) -> None:
-        # Only update the selected mode so existing sell/TOU settings remain untouched.
+        # Use the dedicated mode endpoint so existing sell/TOU settings remain untouched.
         payload = {
             "deviceSn": self.device_sn,
             "workMode": mode,
         }
-        resp = self._post("/strategy/dynamicControl", payload)
+        resp = self._post("/order/sys/workMode/update", payload)
         if not resp.get("success"):
             raise DeyeApiError(f"Set mode failed: {resp.get('msg')}")

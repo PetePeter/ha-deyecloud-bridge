@@ -99,8 +99,8 @@ You need a **Deye Cloud Developer** account. This is separate from the regular D
 
 ## Work mode API notes
 
-Work mode changes are sent as a narrow `/strategy/dynamicControl` update containing only
-`deviceSn` and `workMode`, so the integration does not overwrite existing solar-sell or
+Work mode changes are sent through the dedicated `/order/sys/workMode/update` endpoint using
+only `deviceSn` and `workMode`, so the integration does not overwrite existing solar-sell or
 time-of-use settings that were configured elsewhere.
 
 Valid work modes: `ZERO_EXPORT_TO_CT`, `ZERO_EXPORT_TO_LOAD`, `SELLING_FIRST`
@@ -115,14 +115,46 @@ These are the Deye Cloud API surfaces we have actually verified or extracted fro
 | Station summary | `POST /station/latest` | Verified live. |
 | Station devices | `POST /station/device` | Verified live. |
 | Device history | `POST /device/history` | Documented and used as normal telemetry/history path. |
-| Work mode write | `POST /strategy/dynamicControl` | Verified live. Accepts narrow payloads containing only `deviceSn` and `workMode`. |
+| Read battery config | `POST /config/battery` | Present in Swagger spec. |
+| Read system config | `POST /config/system` | Present in Swagger spec. |
+| Read TOU config | `POST /config/tou` | Verified live with body `{"deviceSn":"..."}`. Returns `touAction` + 6 TOU slots. |
+| Work mode write | `POST /order/sys/workMode/update` | Verified live. Accepts `deviceSn` + `workMode`. |
+| Legacy combined work-mode write | `POST /strategy/dynamicControl` | Verified live earlier, but broader than necessary for mode-only changes. |
 | TOU write | `POST /order/sys/tou/update` | Extracted from Deye's Quick Start bundle. |
+| Battery charge mode control | `POST /order/battery/modeControl` | Present in Swagger spec. Controls `GRID_CHARGE` / `GEN_CHARGE`. |
+| Battery parameter update | `POST /order/battery/parameter/update` | Present in Swagger spec. |
+| Grid peak shaving control | `POST /order/gridPeakShaving/control` | Present in Swagger spec. |
 | Command status | `GET /order/{orderId}` | Extracted from Deye's Quick Start bundle. |
 
 ### Important notes
 
 - `/device/latest` is telemetry only. It does **not** return current TOU, solar-sell, or work-mode strategy state.
+- `/config/tou` is the public read endpoint for saved TOU configuration. In live testing, `{"deviceSn":"YOUR_DEVICE_SN"}` returned `touAction` and the 6 saved slots.
 - Older examples often bundled `solarSellAction`, `touAction`, `touDays`, and six `timeUseSettingItems` into `/strategy/dynamicControl`.
-- In live testing, partial `/strategy/dynamicControl` writes containing only `deviceSn` and `workMode` succeeded. This is why the integration now uses narrow writes for mode changes.
-- No public read endpoint has been confirmed for current TOU configuration, solar-sell state, or current work-mode strategy.
-- Likely read-style candidates under `/strategy/...` and `/order/sys/tou/...` were probed and returned `404`.
+- The integration now uses the dedicated `/order/sys/workMode/update` endpoint for mode-only changes instead of the broader dynamic-control endpoint.
+- A public TOU read endpoint exists, but a public full-strategy read endpoint for the combined current work-mode / solar-sell payload still has not been confirmed.
+- Likely read-style candidates under `/strategy/...` and `/order/sys/tou/...` were probed and returned `404`, which is why `/config/tou` matters so much here.
+
+### Example: read TOU configuration
+
+```json
+{
+  "deviceSn": "YOUR_DEVICE_SN"
+}
+```
+
+Live response shape:
+
+```json
+{
+  "touAction": "on",
+  "timeUseSettingItems": [
+    {"power":15000,"voltage":49,"time":"0000","enableGridCharge":false,"enableGeneration":false,"soc":10},
+    {"power":15000,"voltage":49,"time":"1100","enableGridCharge":false,"enableGeneration":false,"soc":100},
+    {"power":15000,"voltage":49,"time":"1400","enableGridCharge":false,"enableGeneration":false,"soc":10},
+    {"power":15000,"voltage":49,"time":"2320","enableGridCharge":false,"enableGeneration":false,"soc":10},
+    {"power":15000,"voltage":49,"time":"0000","enableGridCharge":false,"enableGeneration":false,"soc":10},
+    {"power":15000,"voltage":49,"time":"0000","enableGridCharge":false,"enableGeneration":false,"soc":10}
+  ]
+}
+```

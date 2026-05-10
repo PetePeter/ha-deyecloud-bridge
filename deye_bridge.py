@@ -201,7 +201,7 @@ def set_mode(mode):
         "deviceSn": DEVICE_SN,
         "workMode": mode,
     }
-    return _post(f"{BASE}/strategy/dynamicControl", payload, token)
+    return _post(f"{BASE}/order/sys/workMode/update", payload, token)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
