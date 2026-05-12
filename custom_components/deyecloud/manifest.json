@@ -1,12 +1,12 @@
 {
   "domain": "deyecloud",
   "name": "Deye Cloud Inverter",
-  "version": "1.0.0",
+  "codeowners": ["@PetePeter"],
   "config_flow": true,
+  "dependencies": [],
   "documentation": "https://github.com/PetePeter/ha-deyecloud-bridge",
+  "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/PetePeter/ha-deyecloud-bridge/issues",
   "requirements": [],
-  "dependencies": [],
-  "codeowners": [],
-  "iot_class": "cloud_polling"
+  "version": "1.0.0"
 }
