@@ -187,18 +187,12 @@ def read_inverter():
         "total_battery_discharge":  f("TotalDischargeEnergy"),
     }
 
-    # System config: work mode + max sell power (POST /config/system)
-    # Returns: systemWorkMode, maxSellPower, maxSolarPower, zeroExportPower, energyPattern
+    # System config: max sell power (POST /config/system)
+    # work_mode is handled by the HACS integration's select entity
     try:
         sys_resp = _post(f"{BASE}/config/system", {"deviceSn": DEVICE_SN}, token)
-        if sys_resp.get("success"):
-            result["work_mode"]      = sys_resp.get("systemWorkMode", "UNKNOWN")
-            result["max_sell_power"] = int(sys_resp.get("maxSellPower", 0))
-        else:
-            result["work_mode"]      = "UNKNOWN"
-            result["max_sell_power"] = 0
+        result["max_sell_power"] = int(sys_resp.get("maxSellPower", 0)) if sys_resp.get("success") else 0
     except Exception:
-        result["work_mode"]      = "UNKNOWN"
         result["max_sell_power"] = 0
 
     return result

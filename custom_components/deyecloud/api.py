@@ -4,7 +4,7 @@ import json
 import time
 from urllib import request, error
 
-from .const import SERVERS, DEFAULT_SERVER, TOKEN_TTL
+from .const import SERVERS, DEFAULT_SERVER, TOKEN_TTL, DEFAULT_RATED_POWER
 
 
 class DeyeApiError(Exception):
@@ -13,15 +13,16 @@ class DeyeApiError(Exception):
 
 class DeyeCloudClient:
     def __init__(self, app_id, app_secret, email, password, device_sn="",
-                 rated_power=15000, server=DEFAULT_SERVER):
-        self._app_id     = app_id
-        self._app_secret = app_secret
-        self._email      = email
-        self._password   = password
-        self.device_sn   = device_sn
-        self._base_url   = SERVERS.get(server, SERVERS[DEFAULT_SERVER])
-        self._token          = None
-        self._token_expires  = 0
+                 rated_power=DEFAULT_RATED_POWER, server=DEFAULT_SERVER):
+        self._app_id       = app_id
+        self._app_secret   = app_secret
+        self._email        = email
+        self._password     = password
+        self.device_sn     = device_sn
+        self._rated_power  = int(rated_power)
+        self._base_url     = SERVERS.get(server, SERVERS[DEFAULT_SERVER])
+        self._token        = None
+        self._token_expires = 0
 
     # ── HTTP ──────────────────────────────────────────────────────────────────
 
@@ -62,7 +63,6 @@ class DeyeCloudClient:
     # ── Discovery ─────────────────────────────────────────────────────────────
 
     def list_stations(self) -> list[dict]:
-        """Return [{id, name}, ...] for all stations on this account."""
         resp = self._post("/station/list", {"page": 1, "size": 100})
         if not resp.get("success"):
             raise DeyeApiError(f"Station list failed: {resp.get('msg')}")
@@ -74,7 +74,6 @@ class DeyeCloudClient:
         ]
 
     def list_devices(self, station_id: str) -> list[dict]:
-        """Return [{sn, name}, ...] for all inverters on the given station."""
         resp = self._post("/station/device", {"page": 1, "size": 100,
                                                "stationIds": [station_id]})
         if not resp.get("success"):
@@ -108,7 +107,7 @@ class DeyeCloudClient:
             except (ValueError, TypeError):
                 return float(default)
 
-        return {
+        result = {
             "solar_power":             f("TotalSolarPower"),
             "house_load":              f("TotalConsumptionPower"),
             "grid_power":              f("TotalGridPower"),
@@ -125,16 +124,90 @@ class DeyeCloudClient:
             "total_grid_export":       f("TotalEnergySell"),
             "total_battery_charge":    f("TotalChargeEnergy"),
             "total_battery_discharge": f("TotalDischargeEnergy"),
+            "grid_voltage_l1":         f("GridVoltageL1"),
+            "grid_voltage_l2":         f("GridVoltageL2"),
+            "grid_voltage_l3":         f("GridVoltageL3"),
+            "grid_frequency":          f("GridFrequency"),
+            "inverter_power_l1":       f("InverterOutputPowerL1"),
+            "inverter_power_l2":       f("InverterOutputPowerL2"),
+            "inverter_power_l3":       f("InverterOutputPowerL3"),
         }
+
+        # /config/system: work mode + max sell power (not in telemetry)
+        try:
+            sys_resp = self._post("/config/system", {"deviceSn": self.device_sn})
+            if sys_resp.get("success"):
+                result["work_mode"]      = sys_resp.get("systemWorkMode", "UNKNOWN")
+                result["max_sell_power"] = int(sys_resp.get("maxSellPower", 0))
+        except Exception:
+            result["work_mode"]      = "UNKNOWN"
+            result["max_sell_power"] = 0
+
+        return result
+
+    def read_tou(self) -> dict:
+        """Read TOU config and return the active charge window."""
+        resp = self._post("/config/tou", {"deviceSn": self.device_sn})
+        if not resp.get("success"):
+            raise DeyeApiError(f"Read TOU failed: {resp.get('msg')}")
+
+        items = resp.get("timeUseSettingItems", [])
+
+        def fmt(hhmm: str) -> str:
+            return f"{hhmm[:2]}:{hhmm[2:]}"
+
+        charge_idx = next((i for i, s in enumerate(items) if s.get("enableGridCharge")), None)
+        if charge_idx is not None and charge_idx + 1 < len(items):
+            charge = items[charge_idx]
+            end    = items[charge_idx + 1]
+            return {
+                "charge_start":  fmt(charge.get("time", "1105")),
+                "charge_end":    fmt(end.get("time", "1355")),
+                "charge_soc":    int(charge.get("soc", 100)),
+                "discharge_soc": int(items[0].get("soc", 6)),
+            }
+
+        return {"charge_start": "11:05", "charge_end": "13:55",
+                "charge_soc": 100, "discharge_soc": 6}
 
     # ── Control ───────────────────────────────────────────────────────────────
 
     def set_work_mode(self, mode: str) -> None:
-        # Use the dedicated mode endpoint so existing sell/TOU settings remain untouched.
-        payload = {
-            "deviceSn": self.device_sn,
-            "workMode": mode,
-        }
-        resp = self._post("/order/sys/workMode/update", payload)
+        resp = self._post("/order/sys/workMode/update",
+                          {"deviceSn": self.device_sn, "workMode": mode})
         if not resp.get("success"):
             raise DeyeApiError(f"Set mode failed: {resp.get('msg')}")
+
+    def set_max_sell_power(self, power_w: int) -> None:
+        resp = self._post("/order/sys/power/update", {
+            "deviceSn":  self.device_sn,
+            "powerType": "MAX_SELL_POWER",
+            "value":     int(power_w),
+        })
+        if not (resp.get("success", False) or resp.get("status") == 666):
+            raise DeyeApiError(f"Set max sell power failed: {resp.get('msg', resp)}")
+
+    def set_tou(self, charge_start: str, charge_end: str,
+                charge_soc: int, discharge_soc: int) -> None:
+        """Write 3-window TOU. Times are 'HH:MM', snapped to 5-min boundary."""
+        def snap(hhmm: str) -> str:
+            h = int(hhmm[:2])
+            m = int(hhmm[3:] if ":" in hhmm else hhmm[2:])
+            return f"{h:02d}:{(m // 5) * 5:02d}"
+
+        def slot(t, grid_charge, soc):
+            return {"time": t, "enableGridCharge": grid_charge,
+                    "enableGeneration": False, "power": self._rated_power, "soc": int(soc)}
+
+        slots = [
+            slot("00:00",          False, discharge_soc),
+            slot(snap(charge_start), True,  charge_soc),
+            slot(snap(charge_end),   False, discharge_soc),
+            slot("00:00",          False, discharge_soc),
+            slot("00:00",          False, discharge_soc),
+            slot("00:00",          False, discharge_soc),
+        ]
+        resp = self._post("/order/sys/tou/update",
+                          {"deviceSn": self.device_sn, "timeUseSettingItems": slots})
+        if not (resp.get("success", False) or resp.get("status") == 666):
+            raise DeyeApiError(f"Set TOU failed: {resp.get('msg', resp)}")

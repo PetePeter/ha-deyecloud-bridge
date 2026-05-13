@@ -1,236 +1,12 @@
-# Deye Battery / Solar Inverter — HA Package
-# ===========================================
-# DROP THIS FILE into /config/packages/
-# DROP deye_bridge.py into /config/
-# CREATE /config/config.yaml from config.example.yaml
-#
-# Polls Deye Cloud API every 5 min.
-# Work mode schedule: Selling First 18:00–21:00 (edit triggers to change).
-
-shell_command:
-  deye_set_selling_first:    "python3 /config/deye_bridge.py set SELLING_FIRST"
-  deye_set_zero_export:      "python3 /config/deye_bridge.py set ZERO_EXPORT_TO_CT"
-  deye_set_zero_export_load: "python3 /config/deye_bridge.py set ZERO_EXPORT_TO_LOAD"
-  deye_set_sell_power:       "python3 /config/deye_bridge.py set_power {{ power | int }}"
-  deye_set_tou: >-
-    python3 /config/deye_bridge.py set_tou
-    {{ charge_start }} {{ charge_end }}
-    {{ charge_soc | int }} {{ discharge_soc | int }}
-
-input_datetime:
-  deye_grid_charge_start:
-    name: "Grid Charge Start"
-    has_time: true
-    has_date: false
-    initial: "11:05:00"
-    icon: mdi:battery-charging
-  deye_grid_charge_end:
-    name: "Grid Charge End"
-    has_time: true
-    has_date: false
-    initial: "13:55:00"
-    icon: mdi:battery-charging-outline
-
-input_number:
-  deye_charge_soc:
-    name: "Charge Target SOC"
-    min: 10
-    max: 100
-    step: 5
-    unit_of_measurement: "%"
-    icon: mdi:battery-arrow-up
-    initial: 100
-  deye_discharge_soc:
-    name: "Discharge Floor SOC"
-    min: 5
-    max: 50
-    step: 1
-    unit_of_measurement: "%"
-    icon: mdi:battery-arrow-down
-    initial: 6
-  deye_max_sell_power:
-    name: "Max Sell Power"
-    min: 0
-    max: 15000
-    step: 100
-    unit_of_measurement: W
-    icon: mdi:transmission-tower-export
-    initial: 5000
-
-input_select:
-  deye_work_mode:
-    name: "Inverter Work Mode"
-    options:
-      - "Zero Export to CT"
-      - "Zero Export to Load"
-      - "Selling First"
-    icon: mdi:solar-power-variant
-
-command_line:
-  - sensor:
-      name: deye_raw
-      unique_id: deye_raw_inverter
-      command: "python3 /config/deye_bridge.py read"
-      scan_interval: 300
-      command_timeout: 20
-      json_attributes:
-        - solar_power
-        - house_load
-        - grid_power
-        - battery_power
-        - ups_power
-        - battery_soc
-        - battery_voltage
-        - battery_temp
-        - inverter_temp
-        - daily_solar
-        - daily_consumption
-        - total_solar
-        - total_grid_import
-        - total_grid_export
-        - total_battery_charge
-        - total_battery_discharge
-        - work_mode
-        - max_sell_power
-      value_template: "{{ value_json.battery_soc | default(0) }}"
-
-template:
-  - sensor:
-      - name: "Deye Solar Power"
-        unique_id: deye_solar_power
-        state: "{{ state_attr('sensor.deye_raw', 'solar_power') | float(0) | round(0) }}"
-        unit_of_measurement: W
-        device_class: power
-        state_class: measurement
-        icon: mdi:solar-power
-
-      - name: "Deye House Load"
-        unique_id: deye_house_load
-        state: "{{ state_attr('sensor.deye_raw', 'house_load') | float(0) | round(0) }}"
-        unit_of_measurement: W
-        device_class: power
-        state_class: measurement
-        icon: mdi:home-lightning-bolt
-
-      - name: "Deye Grid Power"
-        unique_id: deye_grid_power
-        state: "{{ state_attr('sensor.deye_raw', 'grid_power') | float(0) | round(0) }}"
-        unit_of_measurement: W
-        device_class: power
-        state_class: measurement
-        icon: mdi:transmission-tower
-
-      - name: "Deye Battery Power"
-        unique_id: deye_battery_power
-        state: "{{ state_attr('sensor.deye_raw', 'battery_power') | float(0) | round(0) }}"
-        unit_of_measurement: W
-        device_class: power
-        state_class: measurement
-        icon: mdi:battery-charging
-
-      - name: "Deye UPS Power"
-        unique_id: deye_ups_power
-        state: "{{ state_attr('sensor.deye_raw', 'ups_power') | float(0) | round(0) }}"
-        unit_of_measurement: W
-        device_class: power
-        state_class: measurement
-        icon: mdi:power-plug
-
-      - name: "Deye Battery SOC"
-        unique_id: deye_battery_soc
-        state: "{{ state_attr('sensor.deye_raw', 'battery_soc') | float(0) | round(1) }}"
-        unit_of_measurement: "%"
-        device_class: battery
-        state_class: measurement
-
-      - name: "Deye Battery Voltage"
-        unique_id: deye_battery_voltage
-        state: "{{ state_attr('sensor.deye_raw', 'battery_voltage') | float(0) | round(2) }}"
-        unit_of_measurement: V
-        device_class: voltage
-        state_class: measurement
-
-      - name: "Deye Battery Temperature"
-        unique_id: deye_battery_temp
-        state: "{{ state_attr('sensor.deye_raw', 'battery_temp') | float(0) | round(1) }}"
-        unit_of_measurement: "°C"
-        device_class: temperature
-        state_class: measurement
-
-      - name: "Deye Inverter Temperature"
-        unique_id: deye_inverter_temp
-        state: "{{ state_attr('sensor.deye_raw', 'inverter_temp') | float(0) | round(1) }}"
-        unit_of_measurement: "°C"
-        device_class: temperature
-        state_class: measurement
-
-      - name: "Deye Solar Today"
-        unique_id: deye_daily_solar
-        state: "{{ state_attr('sensor.deye_raw', 'daily_solar') | float(0) | round(2) }}"
-        unit_of_measurement: kWh
-        device_class: energy
-        state_class: total_increasing
-        icon: mdi:solar-power
-
-      - name: "Deye Consumption Today"
-        unique_id: deye_daily_consumption
-        state: "{{ state_attr('sensor.deye_raw', 'daily_consumption') | float(0) | round(2) }}"
-        unit_of_measurement: kWh
-        device_class: energy
-        state_class: total_increasing
-
-      - name: "Deye Solar Total"
-        unique_id: deye_total_solar
-        state: "{{ state_attr('sensor.deye_raw', 'total_solar') | float(0) | round(2) }}"
-        unit_of_measurement: kWh
-        device_class: energy
-        state_class: total_increasing
-
-      - name: "Deye Grid Import Total"
-        unique_id: deye_total_grid_import
-        state: "{{ state_attr('sensor.deye_raw', 'total_grid_import') | float(0) | round(2) }}"
-        unit_of_measurement: kWh
-        device_class: energy
-        state_class: total_increasing
-        icon: mdi:transmission-tower-import
-
-      - name: "Deye Grid Export Total"
-        unique_id: deye_total_grid_export
-        state: "{{ state_attr('sensor.deye_raw', 'total_grid_export') | float(0) | round(2) }}"
-        unit_of_measurement: kWh
-        device_class: energy
-        state_class: total_increasing
-        icon: mdi:transmission-tower-export
-
-      - name: "Deye Battery Charge Total"
-        unique_id: deye_total_battery_charge
-        state: "{{ state_attr('sensor.deye_raw', 'total_battery_charge') | float(0) | round(2) }}"
-        unit_of_measurement: kWh
-        device_class: energy
-        state_class: total_increasing
-
-      - name: "Deye Battery Discharge Total"
-        unique_id: deye_total_battery_discharge
-        state: "{{ state_attr('sensor.deye_raw', 'total_battery_discharge') | float(0) | round(2) }}"
-        unit_of_measurement: kWh
-        device_class: energy
-        state_class: total_increasing
-
-      - name: "Deye Work Mode"
-        unique_id: deye_work_mode_sensor
-        state: >-
-          {{ {'SELLING_FIRST': 'Selling First', 'ZERO_EXPORT_TO_CT': 'Zero Export to CT', 'ZERO_EXPORT_TO_LOAD': 'Zero Export to Load'}.get(state_attr('sensor.deye_raw', 'work_mode') | string, 'Unknown') }}
-        icon: mdi:solar-power-variant
-
-      - name: "Deye Max Sell Power"
-        unique_id: deye_max_sell_power_sensor
-        state: "{{ state_attr('sensor.deye_raw', 'max_sell_power') | int(0) }}"
-        unit_of_measurement: W
-        device_class: power
-        state_class: measurement
-        icon: mdi:transmission-tower-export
+# Deye — Personal HA Automations
+# ================================
+# Oscar's usage of the deyecloud HACS integration.
+# The integration owns all inverter entities including TOU, work mode, sell power.
+# This file contains only personal scheduling logic.
 
 automation:
+  # Work mode schedule with SOC guards.
+  # Routes directly to select.deye_inverter_work_mode (HACS integration).
   - id: deye_work_mode_schedule
     alias: "Battery — Work Mode Schedule"
     trigger:
@@ -240,97 +16,42 @@ automation:
       - platform: time
         at: "21:00:00"
         id: zero_export
+      - platform: numeric_state
+        entity_id: sensor.battery_system_soc
+        below: 50
+        id: soc_low
     action:
       - choose:
           - conditions:
               - condition: trigger
                 id: selling_first
+              - condition: numeric_state
+                entity_id: sensor.battery_system_soc
+                above: 60
             sequence:
-              - action: input_select.select_option
+              - action: select.select_option
                 target:
-                  entity_id: input_select.deye_work_mode
+                  entity_id: select.deye_inverter_work_mode
                 data:
                   option: "Selling First"
           - conditions:
               - condition: trigger
                 id: zero_export
             sequence:
-              - action: input_select.select_option
+              - action: select.select_option
                 target:
-                  entity_id: input_select.deye_work_mode
+                  entity_id: select.deye_inverter_work_mode
                 data:
                   option: "Zero Export to CT"
-
-  - id: deye_apply_work_mode
-    alias: "Battery — Apply Work Mode"
-    trigger:
-      - platform: state
-        entity_id: input_select.deye_work_mode
-    action:
-      - choose:
           - conditions:
+              - condition: trigger
+                id: soc_low
               - condition: state
-                entity_id: input_select.deye_work_mode
+                entity_id: select.deye_inverter_work_mode
                 state: "Selling First"
             sequence:
-              - action: shell_command.deye_set_selling_first
-          - conditions:
-              - condition: state
-                entity_id: input_select.deye_work_mode
-                state: "Zero Export to CT"
-            sequence:
-              - action: shell_command.deye_set_zero_export
-          - conditions:
-              - condition: state
-                entity_id: input_select.deye_work_mode
-                state: "Zero Export to Load"
-            sequence:
-              - action: shell_command.deye_set_zero_export_load
-
-  # Sync input_select from polled work_mode (closes the feedback loop)
-  - id: deye_sync_work_mode_display
-    alias: "Battery — Sync Work Mode Display"
-    trigger:
-      - platform: state
-        entity_id: sensor.deye_work_mode
-    condition:
-      - condition: template
-        value_template: >-
-          {{ states('sensor.deye_work_mode') in ['Selling First', 'Zero Export to CT', 'Zero Export to Load'] }}
-    action:
-      - action: input_select.select_option
-        target:
-          entity_id: input_select.deye_work_mode
-        data:
-          option: "{{ states('sensor.deye_work_mode') }}"
-
-  # Rebuild and push TOU whenever charge window or SOC targets change
-  - id: deye_apply_tou
-    alias: "Battery — Apply TOU Schedule"
-    trigger:
-      - platform: state
-        entity_id:
-          - input_datetime.deye_grid_charge_start
-          - input_datetime.deye_grid_charge_end
-          - input_number.deye_charge_soc
-          - input_number.deye_discharge_soc
-        for: "00:00:05"
-    action:
-      - action: shell_command.deye_set_tou
-        data:
-          charge_start:   "{{ states('input_datetime.deye_grid_charge_start')[:5] | replace(':', '') }}"
-          charge_end:     "{{ states('input_datetime.deye_grid_charge_end')[:5] | replace(':', '') }}"
-          charge_soc:     "{{ states('input_number.deye_charge_soc') | int }}"
-          discharge_soc:  "{{ states('input_number.deye_discharge_soc') | int }}"
-
-  # Push new max sell power to inverter TOU (5 s debounce for slider dragging)
-  - id: deye_apply_sell_power
-    alias: "Battery — Apply Max Sell Power"
-    trigger:
-      - platform: state
-        entity_id: input_number.deye_max_sell_power
-        for: "00:00:05"
-    action:
-      - action: shell_command.deye_set_sell_power
-        data:
-          power: "{{ states('input_number.deye_max_sell_power') | int }}"
+              - action: select.select_option
+                target:
+                  entity_id: select.deye_inverter_work_mode
+                data:
+                  option: "Zero Export to CT"

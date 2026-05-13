@@ -10,7 +10,7 @@ from .const import (
 )
 from .coordinator import DeyeCoordinator
 
-PLATFORMS = ["sensor", "select"]
+PLATFORMS = ["binary_sensor", "sensor", "select", "number", "time"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
