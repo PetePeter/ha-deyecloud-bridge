@@ -66,6 +66,9 @@ class DeyeMaxSellPower(CoordinatorEntity, NumberEntity):
             await self.coordinator.hass.async_add_executor_job(
                 self.coordinator.client.set_max_sell_power, int(value)
             )
+            self.coordinator.async_set_updated_data(
+                {**(self.coordinator.data or {}), "max_sell_power": int(value)}
+            )
             await self.coordinator.async_request_refresh()
         except DeyeApiError as e:
             _LOGGER.error("Failed to set max sell power: %s", e)
@@ -96,8 +99,8 @@ class DeyeChargeSoc(CoordinatorEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         data = self.coordinator.data or {}
-        charge_soc    = int(value)    if self._key == "charge_soc"    else int(data.get("charge_soc",    100))
-        discharge_soc = int(value)    if self._key == "discharge_soc" else int(data.get("discharge_soc", 6))
+        charge_soc    = int(value) if self._key == "charge_soc"    else int(data.get("charge_soc",    100))
+        discharge_soc = int(value) if self._key == "discharge_soc" else int(data.get("discharge_soc", 6))
         try:
             await self.coordinator.hass.async_add_executor_job(
                 self.coordinator.client.set_tou,
@@ -105,6 +108,9 @@ class DeyeChargeSoc(CoordinatorEntity, NumberEntity):
                 data.get("charge_end",   "13:55"),
                 charge_soc,
                 discharge_soc,
+            )
+            self.coordinator.async_set_updated_data(
+                {**data, self._key: int(value)}
             )
             await self.coordinator.async_request_refresh()
         except DeyeApiError as e:

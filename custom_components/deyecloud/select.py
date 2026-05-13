@@ -49,6 +49,9 @@ class DeyeWorkModeSelect(CoordinatorEntity, SelectEntity):
             await self.coordinator.hass.async_add_executor_job(
                 self.coordinator.client.set_work_mode, mode_key
             )
+            self.coordinator.async_set_updated_data(
+                {**(self.coordinator.data or {}), "work_mode": mode_key}
+            )
             await self.coordinator.async_request_refresh()
         except DeyeApiError as e:
             _LOGGER.error("Failed to set work mode: %s", e)
