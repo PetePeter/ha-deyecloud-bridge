@@ -97,6 +97,25 @@ You need a **Deye Cloud Developer** account. This is separate from the regular D
 
 ---
 
+## Bridge script commands
+
+```
+python3 deye_bridge.py read            # JSON of all inverter metrics + work_mode + max_sell_power
+python3 deye_bridge.py set MODE        # Switch work mode (see below)
+python3 deye_bridge.py set_power WATTS # Set MAX_SELL_POWER via /order/sys/power/update
+python3 deye_bridge.py keys            # Dump all raw telemetry key names from /device/latest
+```
+
+`read` makes two API calls per poll: `/device/latest` (telemetry) and `/config/system` (work mode + max sell power). `/device/latest` is telemetry-only and does not report control strategy state.
+
+`set_power` uses `POST /order/sys/power/update` with `powerType: MAX_SELL_POWER`. It does **not** touch TOU settings.
+
+## API reference
+
+Full Swagger/OpenAPI spec is saved locally at [`openapi.json`](./openapi.json) — fetched from `https://eu1-developer.deyecloud.com/v2/api-docs`.
+
+---
+
 ## Work mode API notes
 
 Work mode changes are sent through the dedicated `/order/sys/workMode/update` endpoint using

@@ -8,9 +8,54 @@
 # Work mode schedule: Selling First 18:00–21:00 (edit triggers to change).
 
 shell_command:
-  deye_set_selling_first: "python3 /config/deye_bridge.py set SELLING_FIRST"
-  deye_set_zero_export:   "python3 /config/deye_bridge.py set ZERO_EXPORT_TO_CT"
+  deye_set_selling_first:    "python3 /config/deye_bridge.py set SELLING_FIRST"
+  deye_set_zero_export:      "python3 /config/deye_bridge.py set ZERO_EXPORT_TO_CT"
   deye_set_zero_export_load: "python3 /config/deye_bridge.py set ZERO_EXPORT_TO_LOAD"
+  deye_set_sell_power:       "python3 /config/deye_bridge.py set_power {{ power | int }}"
+  deye_set_tou: >-
+    python3 /config/deye_bridge.py set_tou
+    {{ charge_start }} {{ charge_end }}
+    {{ charge_soc | int }} {{ discharge_soc | int }}
+
+input_datetime:
+  deye_grid_charge_start:
+    name: "Grid Charge Start"
+    has_time: true
+    has_date: false
+    initial: "11:05:00"
+    icon: mdi:battery-charging
+  deye_grid_charge_end:
+    name: "Grid Charge End"
+    has_time: true
+    has_date: false
+    initial: "13:55:00"
+    icon: mdi:battery-charging-outline
+
+input_number:
+  deye_charge_soc:
+    name: "Charge Target SOC"
+    min: 10
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    icon: mdi:battery-arrow-up
+    initial: 100
+  deye_discharge_soc:
+    name: "Discharge Floor SOC"
+    min: 5
+    max: 50
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-arrow-down
+    initial: 6
+  deye_max_sell_power:
+    name: "Max Sell Power"
+    min: 0
+    max: 15000
+    step: 100
+    unit_of_measurement: W
+    icon: mdi:transmission-tower-export
+    initial: 5000
 
 input_select:
   deye_work_mode:
@@ -45,6 +90,8 @@ command_line:
         - total_grid_export
         - total_battery_charge
         - total_battery_discharge
+        - work_mode
+        - max_sell_power
       value_template: "{{ value_json.battery_soc | default(0) }}"
 
 template:
@@ -169,6 +216,20 @@ template:
         device_class: energy
         state_class: total_increasing
 
+      - name: "Deye Work Mode"
+        unique_id: deye_work_mode_sensor
+        state: >-
+          {{ {'SELLING_FIRST': 'Selling First', 'ZERO_EXPORT_TO_CT': 'Zero Export to CT', 'ZERO_EXPORT_TO_LOAD': 'Zero Export to Load'}.get(state_attr('sensor.deye_raw', 'work_mode') | string, 'Unknown') }}
+        icon: mdi:solar-power-variant
+
+      - name: "Deye Max Sell Power"
+        unique_id: deye_max_sell_power_sensor
+        state: "{{ state_attr('sensor.deye_raw', 'max_sell_power') | int(0) }}"
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        icon: mdi:transmission-tower-export
+
 automation:
   - id: deye_work_mode_schedule
     alias: "Battery — Work Mode Schedule"
@@ -225,3 +286,51 @@ automation:
                 state: "Zero Export to Load"
             sequence:
               - action: shell_command.deye_set_zero_export_load
+
+  # Sync input_select from polled work_mode (closes the feedback loop)
+  - id: deye_sync_work_mode_display
+    alias: "Battery — Sync Work Mode Display"
+    trigger:
+      - platform: state
+        entity_id: sensor.deye_work_mode
+    condition:
+      - condition: template
+        value_template: >-
+          {{ states('sensor.deye_work_mode') in ['Selling First', 'Zero Export to CT', 'Zero Export to Load'] }}
+    action:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.deye_work_mode
+        data:
+          option: "{{ states('sensor.deye_work_mode') }}"
+
+  # Rebuild and push TOU whenever charge window or SOC targets change
+  - id: deye_apply_tou
+    alias: "Battery — Apply TOU Schedule"
+    trigger:
+      - platform: state
+        entity_id:
+          - input_datetime.deye_grid_charge_start
+          - input_datetime.deye_grid_charge_end
+          - input_number.deye_charge_soc
+          - input_number.deye_discharge_soc
+        for: "00:00:05"
+    action:
+      - action: shell_command.deye_set_tou
+        data:
+          charge_start:   "{{ states('input_datetime.deye_grid_charge_start')[:5] | replace(':', '') }}"
+          charge_end:     "{{ states('input_datetime.deye_grid_charge_end')[:5] | replace(':', '') }}"
+          charge_soc:     "{{ states('input_number.deye_charge_soc') | int }}"
+          discharge_soc:  "{{ states('input_number.deye_discharge_soc') | int }}"
+
+  # Push new max sell power to inverter TOU (5 s debounce for slider dragging)
+  - id: deye_apply_sell_power
+    alias: "Battery — Apply Max Sell Power"
+    trigger:
+      - platform: state
+        entity_id: input_number.deye_max_sell_power
+        for: "00:00:05"
+    action:
+      - action: shell_command.deye_set_sell_power
+        data:
+          power: "{{ states('input_number.deye_max_sell_power') | int }}"
