@@ -69,7 +69,6 @@ class DeyeMaxSellPower(CoordinatorEntity, NumberEntity):
             self.coordinator.async_set_updated_data(
                 {**(self.coordinator.data or {}), "max_sell_power": int(value)}
             )
-            await self.coordinator.async_request_refresh()
         except DeyeApiError as e:
             _LOGGER.error("Failed to set max sell power: %s", e)
 
@@ -112,6 +111,5 @@ class DeyeChargeSoc(CoordinatorEntity, NumberEntity):
             self.coordinator.async_set_updated_data(
                 {**data, self._key: int(value)}
             )
-            await self.coordinator.async_request_refresh()
         except DeyeApiError as e:
             _LOGGER.error("Failed to set %s: %s", self._key, e)
