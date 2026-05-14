@@ -56,8 +56,8 @@ class DeyeChargeWindowTime(CoordinatorEntity, TimeEntity):
 
     async def async_set_value(self, value: dt_time) -> None:
         data = self.coordinator.data or {}
-        start = f"{value.hour:02d}:{value.minute:02d}" if self._which == "start" else data.get("charge_start", "11:05")
-        end   = f"{value.hour:02d}:{value.minute:02d}" if self._which == "end"   else data.get("charge_end",   "13:55")
+        start = f"{value.hour:02d}:{value.minute:02d}" if self._which == "start" else data.get("charge_start", "11:00")
+        end   = f"{value.hour:02d}:{value.minute:02d}" if self._which == "end"   else data.get("charge_end",   "14:00")
         try:
             await self.coordinator.hass.async_add_executor_job(
                 self.coordinator.client.set_tou,

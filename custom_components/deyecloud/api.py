@@ -167,7 +167,7 @@ class DeyeCloudClient:
                 "discharge_soc": int(items[0].get("soc", 6)),
             }
 
-        return {"charge_start": "11:05", "charge_end": "13:55",
+        return {"charge_start": "11:00", "charge_end": "14:00",
                 "charge_soc": 100, "discharge_soc": 6}
 
     # ── Control ───────────────────────────────────────────────────────────────
