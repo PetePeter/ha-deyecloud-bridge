@@ -10,7 +10,8 @@ CONF_RATED_POWER     = "rated_power"
 CONF_REFRESH_INTERVAL = "refresh_interval"
 
 DEFAULT_RATED_POWER      = 15000
-DEFAULT_REFRESH_INTERVAL = 120  # seconds
+DEFAULT_REFRESH_INTERVAL = 300  # seconds — telemetry poll, clock-aligned to 5-min marks
+CONFIG_READ_INTERVAL     = 900  # seconds — work mode + TOU re-read (every 15 min)
 
 TOKEN_TTL = 3000  # seconds — refresh after ~50 min
 

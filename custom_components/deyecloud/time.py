@@ -68,5 +68,6 @@ class DeyeChargeWindowTime(CoordinatorEntity, TimeEntity):
             self.coordinator.async_set_updated_data(
                 {**data, f"charge_{self._which}": f"{value.hour:02d}:{value.minute:02d}"}
             )
+            self.coordinator.mark_config_dirty()
         except DeyeApiError as e:
             _LOGGER.error("Failed to set charge window %s: %s", self._which, e)

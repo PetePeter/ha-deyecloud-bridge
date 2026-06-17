@@ -1,16 +1,21 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_track_time_change
 
 from .api import DeyeCloudClient
 from .const import (
     DOMAIN,
     CONF_APP_ID, CONF_APP_SECRET, CONF_EMAIL, CONF_PASSWORD,
-    CONF_SERVER, CONF_DEVICE_SN, CONF_RATED_POWER, CONF_REFRESH_INTERVAL,
-    DEFAULT_RATED_POWER, DEFAULT_REFRESH_INTERVAL, DEFAULT_SERVER,
+    CONF_SERVER, CONF_DEVICE_SN, CONF_RATED_POWER,
+    DEFAULT_RATED_POWER, DEFAULT_SERVER,
+    DEFAULT_REFRESH_INTERVAL,
 )
 from .coordinator import DeyeCoordinator
 
 PLATFORMS = ["binary_sensor", "sensor", "select", "number", "time"]
+
+# Minutes (clock-aligned) at which telemetry is polled — every 5 min on the hour.
+_POLL_MINUTES = list(range(0, 60, DEFAULT_REFRESH_INTERVAL // 60))
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -23,11 +28,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         rated_power=entry.data.get(CONF_RATED_POWER, DEFAULT_RATED_POWER),
         server=entry.data.get(CONF_SERVER, DEFAULT_SERVER),
     )
-    coordinator = DeyeCoordinator(
-        hass, client,
-        refresh_interval=int(entry.data.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL)),
-    )
+    coordinator = DeyeCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()
+
+    # Clock-aligned telemetry poll: fires on :00/:05/:10.../:55.
+    async def _poll(_now):
+        await coordinator.async_request_refresh()
+
+    entry.async_on_unload(
+        async_track_time_change(hass, _poll, minute=_POLL_MINUTES, second=0)
+    )
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

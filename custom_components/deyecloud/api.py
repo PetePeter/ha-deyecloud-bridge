@@ -91,6 +91,7 @@ class DeyeCloudClient:
     # ── Read ──────────────────────────────────────────────────────────────────
 
     def read(self) -> dict:
+        """Telemetry only (/device/latest) — polled every cycle."""
         resp = self._post("/device/latest", {"deviceList": [self.device_sn]})
         if not resp.get("success"):
             raise DeyeApiError(f"Read failed: {resp.get('msg')}")
@@ -133,17 +134,17 @@ class DeyeCloudClient:
             "inverter_power_l3":       f("InverterOutputPowerL3"),
         }
 
-        # /config/system: work mode + max sell power (not in telemetry)
-        try:
-            sys_resp = self._post("/config/system", {"deviceSn": self.device_sn})
-            if sys_resp.get("success"):
-                result["work_mode"]      = sys_resp.get("systemWorkMode", "UNKNOWN")
-                result["max_sell_power"] = int(sys_resp.get("maxSellPower", 0))
-        except Exception:
-            result["work_mode"]      = "UNKNOWN"
-            result["max_sell_power"] = 0
-
         return result
+
+    def read_system(self) -> dict:
+        """Work mode + max sell power (/config/system) — not in telemetry."""
+        resp = self._post("/config/system", {"deviceSn": self.device_sn})
+        if not resp.get("success"):
+            raise DeyeApiError(f"Read system failed: {resp.get('msg')}")
+        return {
+            "work_mode":      resp.get("systemWorkMode", "UNKNOWN"),
+            "max_sell_power": int(resp.get("maxSellPower", 0)),
+        }
 
     def read_tou(self) -> dict:
         """Read TOU config and return the active charge window."""
