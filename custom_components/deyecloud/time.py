@@ -4,6 +4,7 @@ from datetime import time as dt_time
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -65,9 +66,14 @@ class DeyeChargeWindowTime(CoordinatorEntity, TimeEntity):
                 int(data.get("charge_soc", 100)),
                 int(data.get("discharge_soc", 6)),
             )
-            self.coordinator.async_set_updated_data(
-                {**data, f"charge_{self._which}": f"{value.hour:02d}:{value.minute:02d}"}
-            )
-            self.coordinator.mark_config_dirty()
         except DeyeApiError as e:
             _LOGGER.error("Failed to set charge window %s: %s", self._which, e)
+            raise HomeAssistantError(f"Deye: could not set the grid charge {self._which}: {e}") from e
+        else:
+            # Merge into the data as it is now: the write can take up to a minute.
+            self.coordinator.async_set_updated_data(
+                {**(self.coordinator.data or {}),
+                 f"charge_{self._which}": f"{value.hour:02d}:{value.minute:02d}"}
+            )
+        finally:
+            self.coordinator.mark_config_dirty()
