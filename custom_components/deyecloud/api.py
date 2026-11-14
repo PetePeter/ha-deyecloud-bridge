@@ -102,34 +102,38 @@ class DeyeCloudClient:
             if d.get("key")
         }
 
-        def f(key, default=0.0):
+        def f(*keys, default=0.0):
+            # Models name some values differently: the first key present wins.
+            key = next((k for k in keys if k in raw), None)
             try:
-                return float(raw.get(key, default))
+                return float(raw[key]) if key else float(default)
             except (ValueError, TypeError):
                 return float(default)
 
+        # Single-phase LP1 hybrids report TotalSolarPower as 0, use L1L2 keys
+        # and Cumulative* grid counters instead of TotalEnergyBuy/Sell.
         result = {
-            "solar_power":             f("TotalSolarPower"),
+            "solar_power":             f("TotalDCInputPower", "TotalSolarPower"),
             "house_load":              f("TotalConsumptionPower"),
             "grid_power":              f("TotalGridPower"),
             "battery_power":           f("BatteryPower"),
             "ups_power":               f("UPSLoadPower"),
             "battery_soc":             f("SOC"),
             "battery_voltage":         f("BatteryVoltage"),
-            "battery_temp":            f("Temperature- Battery"),
+            "battery_temp":            f("Temperature- Battery", "BMSTemperature"),
             "inverter_temp":           f("AC Temperature"),
-            "daily_solar":             f("DailyActiveProduction"),
+            "daily_solar":             f("DailyActiveProduction", "PVDailyPowerGenerationActive"),
             "daily_consumption":       f("DailyConsumption"),
-            "total_solar":             f("TotalActiveProduction"),
-            "total_grid_import":       f("TotalEnergyBuy"),
-            "total_grid_export":       f("TotalEnergySell"),
+            "total_solar":             f("TotalActiveProduction", "PVCumulativePowerGenerationActive"),
+            "total_grid_import":       f("CumulativeEnergyPurchased", "TotalEnergyBuy"),
+            "total_grid_export":       f("CumulativeGridFeedIn", "TotalEnergySell"),
             "total_battery_charge":    f("TotalChargeEnergy"),
             "total_battery_discharge": f("TotalDischargeEnergy"),
-            "grid_voltage_l1":         f("GridVoltageL1"),
+            "grid_voltage_l1":         f("GridVoltageL1L2", "GridVoltageL1"),
             "grid_voltage_l2":         f("GridVoltageL2"),
             "grid_voltage_l3":         f("GridVoltageL3"),
             "grid_frequency":          f("GridFrequency"),
-            "inverter_power_l1":       f("InverterOutputPowerL1"),
+            "inverter_power_l1":       f("InverterOutputPowerL1L2", "InverterOutputPowerL1"),
             "inverter_power_l2":       f("InverterOutputPowerL2"),
             "inverter_power_l3":       f("InverterOutputPowerL3"),
         }
