@@ -41,10 +41,14 @@ class DeyeGridConnectedSensor(CoordinatorEntity, BinarySensorEntity):
         data = self.coordinator.data
         if data is None:
             return None
-        l1 = data.get("grid_voltage_l1", 0.0)
-        l2 = data.get("grid_voltage_l2", 0.0)
-        l3 = data.get("grid_voltage_l3", 0.0)
-        freq = data.get("grid_frequency", 0.0)
+        # The inverter's own grid relay is the direct answer when it reports one.
+        relay = data.get("grid_relay_status")
+        if relay:
+            return relay.lower().replace("-", "").replace(" ", "") in ("pullin", "on", "closed")
+        l1 = data.get("grid_voltage_l1") or 0.0
+        l2 = data.get("grid_voltage_l2") or 0.0
+        l3 = data.get("grid_voltage_l3") or 0.0
+        freq = data.get("grid_frequency") or 0.0
         voltage_ok = max(l1, l2, l3) > _GRID_VOLTAGE_THRESHOLD
         frequency_ok = _GRID_FREQUENCY_MIN <= freq <= _GRID_FREQUENCY_MAX
         return voltage_ok and frequency_ok

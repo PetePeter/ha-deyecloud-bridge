@@ -1,0 +1,18 @@
+set_tou_schedule:
+  name: Set time-of-use schedule
+  description: >-
+    Write the inverter's full time-of-use schedule (1 to 6 slots). Each slot runs from its
+    time until the next slot's time; the last one runs until the first. With grid charge on,
+    the slot charges the battery from the grid up to its SOC; with it off, the SOC is the
+    discharge floor. Missing slots are filled with 00:00 copies of the last one.
+  fields:
+    slots:
+      name: Slots
+      description: List of {time "HH:MM", grid_charge true/false, soc 0-100, power W (optional)}.
+      required: true
+      example: >-
+        [{"time": "00:00", "grid_charge": false, "soc": 15},
+         {"time": "02:00", "grid_charge": true, "soc": 100},
+         {"time": "07:00", "grid_charge": false, "soc": 15}]
+      selector:
+        object:

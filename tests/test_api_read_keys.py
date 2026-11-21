@@ -64,7 +64,7 @@ def test_single_phase_lp1_keys():
     assert r["battery_temp"] == 21.0
 
 
-def test_missing_or_bad_values_default_to_zero():
+def test_missing_or_bad_values_are_none():
     r = _client({"TotalDCInputPower": "n/a"}).read()
-    assert r["solar_power"] == 0.0
-    assert r["total_grid_import"] == 0.0
+    assert r["solar_power"] is None
+    assert r["total_grid_import"] is None
