@@ -12,6 +12,9 @@ CONF_REFRESH_INTERVAL = "refresh_interval"
 DEFAULT_RATED_POWER      = 15000
 DEFAULT_REFRESH_INTERVAL = 300  # seconds — telemetry poll, clock-aligned to 5-min marks
 CONFIG_READ_INTERVAL     = 900  # seconds — work mode + TOU re-read (every 15 min)
+# The live register read is a command through the Wi-Fi logger: keep it rare.
+SETTINGS_READ_INTERVAL   = 21600  # seconds: live register re-read (every 6 h)
+SETTINGS_RETRY_INTERVAL  = 1800   # seconds: wait after a failed live register read
 
 TOKEN_TTL = 3000  # seconds — refresh after ~50 min
 
